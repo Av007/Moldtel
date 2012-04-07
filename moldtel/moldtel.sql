@@ -1,8 +1,3 @@
-/*
-SQLyog Ultimate v9.20 
-MySQL - 5.5.22 
-*********************************************************************
-*/
 /*!40101 SET NAMES utf8 */;
 
 create table `moldtel_data` (
