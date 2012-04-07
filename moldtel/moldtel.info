@@ -1,0 +1,6 @@
+name = Moldtel
+description = Order an optimized package or abonement.
+
+core = 7.x
+
+

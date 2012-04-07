@@ -1,0 +1,218 @@
+<?php
+
+include_once 'moldtel.package.inc';
+include_once 'moldtel.controller.inc';
+
+/**
+* @file
+* A module that lists links to recent content.
+*/
+
+/**
+ * Implements hook_help.
+ *
+ * Displays help and module information.
+ *
+ * @param path
+ *   Which path of the site we're using to display help
+ * @param arg
+ *   Array that holds the current path as returned from arg() function
+ */
+function moldtel_help($path, $arg) {
+  switch ($path) {
+    case "admin/help#moldtel":
+      return '<p>'.  t("Order an optimized package or abonement.") .'</p>';
+      break;
+  }
+}
+
+/**
+ * Implements hook_block_info().
+ */
+function moldtel_block_info() {
+  $blocks['current_posts'] = array(
+    'info' => t('Moldtelecom'), //The name that will appear in the block list.
+    'cache' => DRUPAL_CACHE_PER_ROLE, //Default
+  );
+  return $blocks;
+}
+
+
+/**
+ * Implements hook_block_view().
+ *
+ * Prepares the contents of the block(s).
+ */
+function moldtel_block_view($result = '') {
+    $block['subject'] = t('Moldtelecom');
+    if(user_access('access content')){
+        if($result == 'current_posts')
+            $block['content'] =  drupal_get_form('moldtel_form');
+        else
+            $block['content'] =  drupal_get_form('moldtel_result_form');
+    }
+  return $block;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function moldtel_permission(){
+  return array(
+    'access current_posts content' => array(
+      'title' => t('Access content for the Current posts module'),
+    )
+  );
+}
+
+
+/**
+ * Form function, called by drupal_get_form()
+ * in current_posts_menu().
+ */
+function moldtel_result_form($form, &$form_state) {
+    
+}
+/**
+ * Form function, called by drupal_get_form()
+ * in current_posts_menu().
+ */
+function moldtel_form($form, &$form_state) {
+    $form['abonament'] = array(
+        '#type' => 'select',
+        '#title' => t('Abonament types'),
+        '#default_value' => variable_get('feed_item_length', 'Standart'),
+        '#options' => array(
+            'st' => t('Standard'),
+            'ec' => t('Econom'),
+            'in' => t('Înlesniri'),
+        ),
+        '#maxlength' => 130,
+        '#required' => TRUE,
+    );
+    $form['local_min'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Local minutes'),
+        '#size' => 24,
+        '#maxlength' => 24,
+    );
+    $form['national_min'] = array(
+        '#type' => 'textfield',
+        '#title' => t('National minutes'),
+        '#size' => 24,
+        '#maxlength' => 24,
+    );
+    $form['mob_min'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Mobiles minutes'),
+        '#size' => 24,
+        '#maxlength' => 24,
+    );
+    $form['inter_min'] = array(
+        '#type' => 'textfield',
+        '#title' => t('International minutes'),
+        '#size' => 24,
+        '#maxlength' => 24,
+    );
+    $form['rus_min'] = array(
+        '#type' => 'textfield',
+        '#title' => t('International minutes Russia'),
+        '#size' => 24,
+        '#maxlength' => 24,
+    );
+    $form['eu_usa_min'] = array(
+        '#type' => 'textfield',
+        '#title' => t('International minutes EU & USA'),
+        '#size' => 24,
+        '#maxlength' => 24,
+    );
+    $form['submit'] = array('#type' => 'submit', '#value' => t('Submit'));
+    return $form;
+}
+
+/**
+ * Implements validation from the Form API.
+ *
+ * The function name is created in a similar way to a hook,
+ * by appending '_validate' to the name of the form, as defined by
+ * the function above and passed to drupal_get_form in current_posts_menu().
+ *
+ * @param $form
+ *   A structured array containing the elements and properties of the form.
+ * @param $form_state
+ *   An array that stores information about the form's current state
+ *   during processing.
+ */
+function moldtel_form_validate($form, &$form_state){
+  $values = $form_state['values'];
+  // check values
+  if (!in_array($values['abonament'], array('st', 'ec', 'in'))){
+    form_set_error('local_min', t('You must enter an integer for the maximum number of posts to display.'));
+  }
+  unset($values['abonament']);
+  unset($values['form_build_id']);
+  unset($values['form_id']);
+  unset($values['submit']);
+  unset($values['op']);
+  // is_numeric
+  $check =0;
+  foreach ($values as $key=>$value) {
+    if (!is_numeric($value) || $value <= 0){
+        if(!empty($value))
+            form_set_error($key, t('You must enter an integer number!'));
+        $check++;
+    }
+  }
+  if($check > 5)
+      form_set_error('op', t('At least one field should be filled!'));
+}
+
+function moldtel_form_submit($form, &$form_state) {
+    $tarifs = moldtel_data();
+    $values = $form_state['values'];
+    // clean $values array
+    foreach ($values as $key => $value) {
+        if($value = '' || empty($value)) 
+            unset($values[$key]);
+    }
+    
+    $moldtel = new MoldtelPackage($values, $tarifs);
+    $op_abnm = $moldtel->get_current_abonament_price();
+    $package_result = $moldtel->get_packege_price($op_abnm);
+    $mix_result = $moldtel->get_mix_price();
+    $moldTel_output = new MoldtelController($values, $op_abnm, $package_result, $mix_result, $tarifs);
+    $result = $moldTel_output->DisplayResult();
+    print_r($result); die;
+}
+
+/**
+ * Custom content function.
+ *
+ * Sets beginning and end dates, retrieves posts from database
+ * saved in that time period.
+ *
+ * @param $display
+ *   Whether called by block or page, which need different numbers of posts.
+ * @return
+ *   A result set of the targeted posts.
+ */
+function moldtel_data() {
+    //Use Database API to retrieve current posts.
+    $result = array();
+    $query = db_select('moldtel_data')
+                    ->fields('moldtel_data', array())->execute();
+    while ($record = $query->fetchAssoc()) {
+        $result[$record['tarif_name']] = $record;
+    }
+    return $result;
+}
+
+/**
+ * Process variables for comment.tpl.php.
+ *
+ * @see comment.tpl.php
+ */
+function template_moldtel_result(&$variables)
+{
+    $variables['content'] = array('comment_form' => array());
+}
