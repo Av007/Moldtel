@@ -23,36 +23,13 @@ class MoldtelPackage
     var $values;
     var $tarifs;
     var $fields = array('local_min', 'national_min', 'mob_min', 'inter_min', 'rus_min', 'eu_usa_min');
-    var $abonaments = array('st', 'ec', 'in');
+    var $abonaments = array('st', 'ec');
     var $local_min = array('local_min', 'national_min');
     
     public function __construct($values, $tarifs) {
         $this->values = $values;
         $this->tarifs = $tarifs;
     }
-
-    // @deprecated 
-    /*
-    private function get_abonament_price($abonament_name) {
-        $local_min = 0; // local minutes
-        $diff_minutes = 0;
-        // $other_min = 0; // all minutes exept local
-        foreach ($this->values as $k => $value) {
-            if (in_array($k, $this->local_min))
-                $local_min += $value;
-        }
-        $diff_minutes = intval($this->tarifs[$abonament_name]['minutes'] - $local_min);
-        if($diff_minutes < 0)
-            $diff_minutes = 0;
-        foreach ($this->values as $k => $value) {
-            if (in_array($k, $this->fields) && !in_array($k, $this->local_min))
-                $other_min += $value;
-        }
-        // (($diff_minutes + $other_min) * $this->tarifs[$abonament_name . ' add']['price']) +
-        $total_price =  $this->tarifs[$abonament_name]['price'];
-        return $total_price;
-    }
-    */
     
     /**
      * Function return array with two subarray current and optimum abonaments
@@ -66,14 +43,17 @@ class MoldtelPackage
         // get current abonament data
         $abnm_price[$this->values['abonament']] = $this->tarifs[$this->values['abonament']]['price'];
         $cur_abnm = array('name' => $this->values['abonament'], 'price' => $abnm_price[$this->values['abonament']]);
+        if (!isset($this->values['national_min']))
+            $this->values['national_min'] = 0;
+        $loc_min = $this->values['local_min'] + $this->values['national_min'];
         // get other abonament data
         foreach ($this->abonaments as $abonament_name) {
-            if ($abonament_name != $this->values['abonament']) {
-                $abnm_price[$abonament_name] = $this->tarifs[$abonament_name]['price'];
-            }
+                $k = $this->tarifs[$abonament_name]['price'] / $this->tarifs[$abonament_name]['minutes'];
+                $abnm_price[$abonament_name] = $this->getPrice($loc_min, $this->tarifs[$abonament_name]['minutes'], $this->tarifs[$abonament_name]['price'], $k, $this->tarifs[$abonament_name . ' add']['price']);
         }
+        
         foreach ($abnm_price as $key => $value) {
-            if (isset($op_abnm) && $value < $op_abnm)
+            if (isset($op_abnm) && ($value < $op_abnm['price']))
                 $op_abnm = array('name' => $key, 'price' => $value);
             elseif (!isset($op_abnm))
                 $op_abnm = array('name' => $key, 'price' => $value);
@@ -91,6 +71,8 @@ class MoldtelPackage
     public function get_packege_price($op_abnm) {
         $result = array();
         $diff_min = 0;
+        if (!isset($this->values['national_min']))
+            $this->values['national_min'] = 0;
         // dividing minutes that included in optimized abonament
         $this->values['local_min'] -= $this->tarifs[$op_abnm['optimum']['name']]['minutes'];
         if ($this->values['local_min'] < 0) {
@@ -169,6 +151,18 @@ class MoldtelPackage
             $tmp_type = $key;
         }
         return $result;
+    }
+    
+    private function getPrice($usr_min, $pack_min, $price, $k, $add_min)
+    {
+        $usr_price = $add_min * ($usr_min - $pack_min);
+        if($usr_price < 0)
+            $usr_price = 0;
+        $usr_price += $k * $usr_min;
+        if($usr_price > $price)
+            return $usr_price;
+        else
+            return $price;
     }
 }
 ?>

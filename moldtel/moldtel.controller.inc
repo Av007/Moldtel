@@ -127,6 +127,8 @@ class MoldtelController
         foreach ($this->mixes as $k=>$value) {
             $result += $k;
         }
+        // add optimum abonament price
+        $result += $this->abonaments['optimum']['price'];
         return $result;
     }
     /**
@@ -147,10 +149,23 @@ class MoldtelController
     {
         $result = array();
         foreach ($this->packages as $key => $value) {
-            $result[] = 'package_' . $value['name'];
+            $result[] = $value['name'];
         }
         foreach ($this->mixes as $key => $value) {
-            $result[] = 'mix_' . $key;
+            $result[] = 'mix '. $key;
+        }
+        foreach ($result as &$value) {
+            if(strpos($value, 'mix') !== FALSE)
+            {
+                foreach ($this->tarifs as $v) {
+                    if(strpos($v['tarif_name'], $value) !== FALSE)
+                    {
+                        $value = $this->tarifs[$v['tarif_name']]['name'];
+                    }
+                }
+            }
+            else
+                $value = $this->tarifs[$value]['name'];
         }
         return $result;
     }

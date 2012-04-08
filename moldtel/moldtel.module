@@ -37,7 +37,6 @@ function moldtel_block_info() {
   return $blocks;
 }
 
-
 /**
  * Implements hook_block_view().
  *
@@ -65,14 +64,6 @@ function moldtel_permission(){
   );
 }
 
-
-/**
- * Form function, called by drupal_get_form()
- * in current_posts_menu().
- */
-function moldtel_result_form($form, &$form_state) {
-    
-}
 /**
  * Form function, called by drupal_get_form()
  * in current_posts_menu().
@@ -175,14 +166,19 @@ function moldtel_form_submit($form, &$form_state) {
         if($value = '' || empty($value)) 
             unset($values[$key]);
     }
-    
+    // main logic
     $moldtel = new MoldtelPackage($values, $tarifs);
     $op_abnm = $moldtel->get_current_abonament_price();
     $package_result = $moldtel->get_packege_price($op_abnm);
     $mix_result = $moldtel->get_mix_price();
     $moldTel_output = new MoldtelController($values, $op_abnm, $package_result, $mix_result, $tarifs);
     $result = $moldTel_output->DisplayResult();
-    print_r($result); die;
+    // drupal_set_message(t('Current price: ' . $result['current_price']) . ' Optimized price: ' . $result['optimum_price'], 'warning');
+    foreach ($result['packages_name'] as $value) {
+        drupal_set_message(t('Seria de opţiuni  ' . $value));
+    }
+    drupal_set_message(t('abonament ' . $tarifs[$op_abnm['optimum']['name']]['name']));
+    return;
 }
 
 /**
@@ -205,14 +201,4 @@ function moldtel_data() {
         $result[$record['tarif_name']] = $record;
     }
     return $result;
-}
-
-/**
- * Process variables for comment.tpl.php.
- *
- * @see comment.tpl.php
- */
-function template_moldtel_result(&$variables)
-{
-    $variables['content'] = array('comment_form' => array());
 }
