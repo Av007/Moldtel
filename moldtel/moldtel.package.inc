@@ -1,12 +1,11 @@
 <?php
 
 /** 
- * @file - use as include file to Drupal 7.x molude 
- * @class - This class checks optimized abonement, get current abonament and 
- * calculates prices. Also class get optimizated package(s) depending on user 
- * bill data.
+ * @file - use as include file to Drupal 7.x module 
+ * @class - This class gets plans prices for actual users minutes. Also class 
+ *          gets optimized package(s) depending on user bill data.
  * 
- * @version 1.0
+ * @version 1.1
  */
 
 class MoldtelPackage
@@ -17,88 +16,106 @@ class MoldtelPackage
      * @var $values type array() current users values
      * @var $tarifs type array() current tarifs from db
      * @var $fields type array() current active fields
-     * @var $abonaments type array() all active abonaments (marks as in db)
      * @var $local_min type array() abonament minutes include fields
+     * @var $loc_min type int summa of all interior network minutes
      */
     var $values;
     var $tarifs;
     var $fields = array('local_min', 'national_min', 'mob_min', 'inter_min', 'rus_min', 'eu_usa_min');
-    var $abonaments = array('st', 'ec');
     var $local_min = array('local_min', 'national_min');
+    var $loc_min = 0;
     
     public function __construct($values, $tarifs) {
-        $this->values = $values;
+        $chk_vals = array();
+        // set up only useful values
+        foreach (array_intersect($this->fields, array_keys($values)) as $key => $value)
+            $chk_vals[$value] = $values[$value];
+        $this->values = $chk_vals;
         $this->tarifs = $tarifs;
     }
     
+    public function GetResult()
+    {
+        $plans = $this->GetOptimizedPlan();
+        $packages = $this->GetOptimizedPackege($plans);
+        $mixes = $this->GetMixPrice($plans);
+        $result = $this->GetPackagesName($plans, $packages, $mixes);
+        return $result;
+    }
+    
     /**
-     * Function return array with two subarray current and optimum abonaments
+     * Function return array with two subarray with currents and optimum plans
      * 
      * @return type array() 
-     * 1) optimum - array of abonament with name and price witch selected as optimized (low price)
-     * 2) current - array of abonament with name and price witch selected as users current
+     * 1) optimum - array of plan with name and price witch was selected as optimized
+     * 2) current - array of plan with name and price witch  was selected as users current
      */
-    public function get_current_abonament_price()
+    private function GetOptimizedPlan()
     {
-        // get current abonament data
-        $abnm_price[$this->values['abonament']] = $this->tarifs[$this->values['abonament']]['price'];
-        $cur_abnm = array('name' => $this->values['abonament'], 'price' => $abnm_price[$this->values['abonament']]);
-        if (!isset($this->values['national_min']))
-            $this->values['national_min'] = 0;
-        $loc_min = $this->values['local_min'] + $this->values['national_min'];
         // get other abonament data
-        foreach ($this->abonaments as $abonament_name) {
-                $k = $this->tarifs[$abonament_name]['price'] / $this->tarifs[$abonament_name]['minutes'];
-                $abnm_price[$abonament_name] = $this->getPrice($loc_min, $this->tarifs[$abonament_name]['minutes'], $this->tarifs[$abonament_name]['price'], $k, $this->tarifs[$abonament_name . ' add']['price']);
+        foreach ($this->tarifs as $tarif) {
+            if($tarif['type'] == 'plan') {
+                $k = $this->tarifs[$tarif['tarif_name']]['price'] / $this->tarifs[$tarif['tarif_name']]['minutes'];
+                $plan_price[$tarif['tarif_name']] = $this->getPrice($this->values['local_min'], $this->tarifs[$tarif['tarif_name']]['minutes'], $this->tarifs[$tarif['tarif_name']]['price'], $k, $this->tarifs[$tarif['tarif_name'] . ' add']['price']);
+            }
         }
         
-        foreach ($abnm_price as $key => $value) {
-            if (isset($op_abnm) && ($value < $op_abnm['price']))
-                $op_abnm = array('name' => $key, 'price' => $value);
-            elseif (!isset($op_abnm))
-                $op_abnm = array('name' => $key, 'price' => $value);
+        foreach ($plan_price as $key => $value) {
+            if (isset($op_plan) && ($value < $op_plan['price'])) {
+                $cur_plan = $op_plan;
+                $op_plan = array('name' => $key, 'price' => $value);
+            }
+            elseif (!isset($op_plan))
+                $op_plan = array('name' => $key, 'price' => $value);
+            else
+                $cur_plan = array('name' => $key, 'price' => $value);
         }
-        return array('optimum' => $op_abnm, 'current' => $cur_abnm);
+        return array('optimum' => $op_plan, 'current' => $cur_plan);
     }
 
     /**
      * This function return array of packages that can be apply
      * 
      * @param $op_abnm type array() - optimized abonament. Use for dividing local 
-     * including in abonament minutes.
+     *                              including in abonament minutes.
      * @return array() of packages
      */
-    public function get_packege_price($op_abnm) {
-        $result = array();
-        $diff_min = 0;
-        if (!isset($this->values['national_min']))
-            $this->values['national_min'] = 0;
+    private function GetOptimizedPackege($op_abnm) {
         // dividing minutes that included in optimized abonament
         $this->values['local_min'] -= $this->tarifs[$op_abnm['optimum']['name']]['minutes'];
         if ($this->values['local_min'] < 0) {
-            $this->values['national_min'] += $this->values['local_min'];
+            $this->values['local_min'] = 0;
         }
+        
         foreach ($this->values as $key => $value) {
             if ($value > 0) {
                 foreach ($this->tarifs as $tarif) {
-                    if ((strpos($tarif['tarif_name'], $key) !== FALSE) && (strpos($tarif['tarif_name'], 'mix') == FALSE)) {
-                        $diff_min = $tarif['minutes'] - $value;
-                        if (($diff_min >= 0) && isset($result[$key]) && (($result[$key]['diff_min'] < 0) || ($diff_min < $result[$key]['diff_min']) && ($result[$key]['diff_min'] > 0)))
-                            $result[$key] = array('price' => $tarif['price'], 'name' => $tarif['tarif_name'], 'diff_min' => $diff_min);
-                        elseif (($diff_min < 0) && isset($result[$key]) && ($diff_min > $result[$key]['diff_min']))
-                            $result[$key] = array('price' => $tarif['price'], 'name' => $tarif['tarif_name'], 'diff_min' => $diff_min);
-                        elseif (!isset($result[$key]))
-                            $result[$key] = array('price' => $tarif['price'], 'name' => $tarif['tarif_name'], 'diff_min' => $diff_min);
+                    // compare type package by filds
+                    if ((strpos($tarif['tarif_name'], $key) !== FALSE) && (strpos($tarif['tarif_name'], 'mix ') === FALSE) && (strpos($tarif['tarif_name'], ' add') === FALSE)) {
+                        if (in_array($key, $this->local_min))
+                            $add_tarif = $this->tarifs[$op_abnm['optimum']['name']  . ' add']['price'];
+                        else
+                            $add_tarif = $this->tarifs[$key . ' add']['price'];
+                        $k = $tarif['price'] / $tarif['minutes'];
+                        $plan_price[$tarif['tarif_name']] = array( 'price' => $this->getPrice($this->values['local_min'], $tarif['minutes'], $tarif['price'], $k, $add_tarif),
+                            'field' => $key);
                     }
                 }
             }
+        }
+        
+        foreach ($plan_price as $key => $value) {
+            if (isset($result[$value['field']]) && ($value['price'] < $result[$value['field']]['price']) && ($result[$value['field']]['field'] == $value['field'])) {
+                $result[$value['field']] = array('name' => $key, 'price' => $value['price'], 'field' => $value['field']);
+            } elseif (!isset($result[$value['field']]))
+                $result[$value['field']] = array('name' => $key, 'price' => $value['price'], 'field' => $value['field']);
         }
         return $result;
     }
     
     /**
-     * This function return array of mix packages that can be apply. Mix package 
-     * included a few type of simple packages and have one price.
+     * This function return array of mix packages that can be applied. Mix package 
+     * included several type of simple packages and has one price.
      * 
      * @return array() of mix packages
      * @method return array('type' => array('diff_min' => value, 'name' => value,))
@@ -107,8 +124,8 @@ class MoldtelPackage
      * @var field - included form fields
      * @example array('50' => array('diff_min' => -15, 'name' => lical_min_15))
      */
-    public function get_mix_price() {
-        $result = array();
+    private function GetMixPrice($op_abnm) {
+        // parse mix values
         foreach ($this->tarifs as $value) {
             if (strpos($value['tarif_name'], 'mix') !== FALSE) {
                 // 0 - mix, 1 - type, 2 - name
@@ -118,13 +135,19 @@ class MoldtelPackage
                 );
             }
         }
-        foreach ($this->values as $k => $v) {
+        foreach ($this->values as $key => $v) {
             foreach ($mix_array as $ma) {
-                if (isset($value) && ($k == $ma['map'][2]) && $ma['value']['minutes'] >= $v) {
-                        $result[$ma['map'][1]][$k] = $ma['value']['minutes'] - $v;
+                if (($key == $ma['map'][2]) && ($v != 0)) {
+                    if ($key == 'national_min')
+                        $add_tarif = $this->tarifs[$op_abnm['optimum']['name'] . ' add']['price'];
+                    else
+                        $add_tarif = $this->tarifs[$key . ' add']['minutes'];
+                    $k = $ma['value']['price'] / $ma['value']['minutes'];
+                    $result[$ma['map'][1]][$key] = $this->getPrice($this->loc_min, $ma['value']['minutes'], $ma['value']['price'], $k, $add_tarif);
                 }
             }
         }
+        // select cheapest mix packet
         foreach ($result as $key => $value) {
             $i = 0;
             if (isset($temp)) {
@@ -153,16 +176,50 @@ class MoldtelPackage
         return $result;
     }
     
-    private function getPrice($usr_min, $pack_min, $price, $k, $add_min)
+    /**
+     * Return packages name code for labels
+     */
+    private function GetPackagesName($plans, $packages, $mixes) {
+        // for plans
+        $result['current'] = array('name' => $this->tarifs[$plans['current']['name']]['name'],
+            'price' => $this->tarifs[$plans['current']['name']]['price']);
+        $result['optimum'] = array('name' => $this->tarifs[$plans['optimum']['name']]['name'],
+                'price' => $this->tarifs[$plans['optimum']['name']]['price']);
+        // for package
+        foreach ($packages as $key => $value) {
+                $result[] = array('name' => $this->tarifs[$value['name']]['name'],
+                    'price' => $this->tarifs[$value['name']]['price']);
+        }
+        // for mixes
+        foreach ($mixes as $key => $value) {
+                foreach ($this->tarifs as $v) {
+                    if ((strpos($v['tarif_name'], 'mix ' . $key) !== FALSE) && (!isset($result[$key]))) {
+                        $result[$key] = array('name' => $this->tarifs[$v['tarif_name']]['name'],
+                            'price' => $this->tarifs[$v['tarif_name']]['price']);
+                    }
+            }
+        }
+        return $result;
+    }
+    
+    /** 
+     * Main formula for this task:
+     * S = (S_pac / t_pac * t) + a * (t - t_pack)
+     * 
+     * @param type $usr_min - users minutes
+     * @param type $pack_min - package/plan minutes
+     * @param type $price - package/plan price
+     * @param type $add_price - adding price for overflow plan per minute
+     * @param type $add_min - adding minutes for overflow plan
+     * @return type float
+     */
+    protected function getPrice($usr_min, $pack_min, $price, $add_price, $add_min)
     {
         $usr_price = $add_min * ($usr_min - $pack_min);
         if($usr_price < 0)
             $usr_price = 0;
-        $usr_price += $k * $usr_min;
-        if($usr_price > $price)
-            return $usr_price;
-        else
-            return $price;
+        $usr_price += $add_price * $usr_min;
+        return max($usr_price, $price);
     }
 }
 ?>

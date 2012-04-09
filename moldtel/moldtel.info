@@ -1,5 +1,5 @@
 name = Moldtel
-description = Order an optimized package or abonement.
+description = Order an optimized package or plan.
 
 core = 7.x
 

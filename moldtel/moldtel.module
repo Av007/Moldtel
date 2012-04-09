@@ -1,7 +1,6 @@
 <?php
 
 include_once 'moldtel.package.inc';
-include_once 'moldtel.controller.inc';
 
 /**
 * @file
@@ -45,10 +44,7 @@ function moldtel_block_info() {
 function moldtel_block_view($result = '') {
     $block['subject'] = t('Moldtelecom');
     if(user_access('access content')){
-        if($result == 'current_posts')
             $block['content'] =  drupal_get_form('moldtel_form');
-        else
-            $block['content'] =  drupal_get_form('moldtel_result_form');
     }
   return $block;
 }
@@ -59,7 +55,7 @@ function moldtel_block_view($result = '') {
 function moldtel_permission(){
   return array(
     'access current_posts content' => array(
-      'title' => t('Access content for the Current posts module'),
+      'title' => t('Access content for the Moldtel module'),
     )
   );
 }
@@ -71,12 +67,11 @@ function moldtel_permission(){
 function moldtel_form($form, &$form_state) {
     $form['abonament'] = array(
         '#type' => 'select',
-        '#title' => t('Abonament types'),
-        '#default_value' => variable_get('feed_item_length', 'Standart'),
+        '#title' => t('Plans types'),
+        '#default_value' => t('Standart'),
         '#options' => array(
             'st' => t('Standard'),
             'ec' => t('Econom'),
-            'in' => t('Înlesniri'),
         ),
         '#maxlength' => 130,
         '#required' => TRUE,
@@ -138,7 +133,7 @@ function moldtel_form_validate($form, &$form_state){
   $values = $form_state['values'];
   // check values
   if (!in_array($values['abonament'], array('st', 'ec', 'in'))){
-    form_set_error('local_min', t('You must enter an integer for the maximum number of posts to display.'));
+    form_set_error('local_min', t('Wrong type selected!'));
   }
   unset($values['abonament']);
   unset($values['form_build_id']);
@@ -162,22 +157,14 @@ function moldtel_form_submit($form, &$form_state) {
     $tarifs = moldtel_data();
     $values = $form_state['values'];
     // clean $values array
-    foreach ($values as $key => $value) {
-        if($value = '' || empty($value)) 
-            unset($values[$key]);
-    }
+    $values = array_filter($values);
     // main logic
     $moldtel = new MoldtelPackage($values, $tarifs);
-    $op_abnm = $moldtel->get_current_abonament_price();
-    $package_result = $moldtel->get_packege_price($op_abnm);
-    $mix_result = $moldtel->get_mix_price();
-    $moldTel_output = new MoldtelController($values, $op_abnm, $package_result, $mix_result, $tarifs);
-    $result = $moldTel_output->DisplayResult();
-    // drupal_set_message(t('Current price: ' . $result['current_price']) . ' Optimized price: ' . $result['optimum_price'], 'warning');
-    foreach ($result['packages_name'] as $value) {
-        drupal_set_message(t('Seria de opţiuni  ' . $value));
+    $result = $moldtel->GetResult();
+    // display
+    foreach ($result as $value) {
+        drupal_set_message('Seria de opţiuni  ' . $value['name'] . ' -> ' . $value['price']);
     }
-    drupal_set_message(t('abonament ' . $tarifs[$op_abnm['optimum']['name']]['name']));
     return;
 }
 
