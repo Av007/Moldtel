@@ -40,12 +40,12 @@ class MoldtelController
      */
     public function DisplayResult()
     {
-        $this->getValuesPrices();
-        $this->getDiffPrices();
-        $optimum_price = $this->getSummPrice();
-        $current_price = $this->getOldSummPrice();
+        //$this->getValuesPrices();
+        //$this->getDiffPrices();
+        //$optimum_price = $this->getSummPrice();
+        //$current_price = $this->getOldSummPrice();
         $packages_name = $this->getPackagesName();
-        return array('optimum_price' => $optimum_price, 'current_price' => $current_price, 'packages_name' => $packages_name);
+        return array( 'packages_name' => $packages_name); // 'optimum_price' => $optimum_price, 'current_price' => $current_price,
     }
     /**
      * Get values minutes and make price by optimum abonament
