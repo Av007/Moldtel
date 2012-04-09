@@ -11,7 +11,7 @@ create table `moldtel_data` (
 	`minutes` int (11),
 	`price` float ,
 	`type` char (27),
-	`name` varchar (1650)
+	`name` varchar (165)
 ); 
 insert into `moldtel_data` (`id`, `tarif_name`, `minutes`, `price`, `type`, `name`) values('1','local_min_10','50','10','packet','Minute locale 10');
 insert into `moldtel_data` (`id`, `tarif_name`, `minutes`, `price`, `type`, `name`) values('2','local_min_18','100','18','packet','Minute locale 18');
