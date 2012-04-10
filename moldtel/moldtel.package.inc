@@ -143,37 +143,24 @@ class MoldtelPackage
                     else
                         $add_tarif = $this->tarifs[$key . ' add']['minutes'];
                     $k = $ma['value']['price'] / $ma['value']['minutes'];
-                    $result[$ma['map'][1]][$key] = $this->getPrice($v, $ma['value']['minutes'], $ma['value']['price'], $k, $add_tarif);
+                    $add_mix = $this->getPrice($v, $ma['value']['minutes'], $ma['value']['price'], $k, $add_tarif);
+                    if($add_mix > $ma['map'][1])
+                        $result[$ma['map'][1]] += $add_mix - $ma['map'][1];
+                    elseif(!isset ($result[$ma['map'][1]]))
+                        $result[$ma['map'][1]] = $ma['value']['price'];
+                    $add_mix = 0;
                 }
             }
         }
+        
         // select cheapest mix packet
         foreach ($result as $key => $value) {
-            $i = 0;
-            if (isset($temp)) {
-                foreach (array_keys($temp) as $v) {
-                    foreach (array_keys($value) as $val) {
-                        if ($v == $val) {
-                            $i++;
-                        }
-                    }
-                }
-            } else {
-                $temp = $value;
-                $tmp_count = count($value);
-                $tmp_type = $key;
-            }
-            if (($i == $tmp_count) && ($tmp_count == count($value))) {
-                if ($tmp_type > $key)
-                    unset($result[$tmp_type]);
-                else
-                    unset($result[$key]);
-            }
-            $temp = $value;
-            $tmp_count = count($value);
-            $tmp_type = $key;
+            if (isset($op_mix) && ($value < $op_mix['price'])) {
+                $op_mix = array('name' => $key, 'price' => $value);
+            } elseif (!isset($op_mix))
+                $op_mix = array('name' => $key, 'price' => $value);
         }
-        return $result;
+        return $op_mix;
     }
     
     /**
@@ -191,15 +178,12 @@ class MoldtelPackage
                     'price' => $value['price']);
         }
         // for mixes
-        foreach ($mixes as $key => $value) {
-                foreach ($this->tarifs as $v) {
-                    if ((strpos($v['tarif_name'], 'mix ' . $key) !== FALSE) && (!isset($result[$key]))) {
-                        $price = 0;
-                        foreach ($value as $val)
-                            $price += $val;
-                        $result[$key] = array('name' => $this->tarifs[$v['tarif_name']]['name'],
-                            'price' => $price);
-                    }
+        foreach ($this->tarifs as $value)
+        {
+            if (strpos($value['tarif_name'], 'mix ' . $mixes['name']) !== FALSE) 
+            {
+                $result['mix'] = array('name' => $value['name'],
+                    'price' => $mixes['price']);
             }
         }
         return $result;
