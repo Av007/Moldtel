@@ -118,11 +118,11 @@ class MoldtelPackage
      * included several type of simple packages and has one price.
      * 
      * @return array() of mix packages
-     * @method return array('type' => array('diff_min' => value, 'name' => value,))
-     * @var diff_min - delta between used minutes and including minutes in current package
+     * @method return array('type' => array('price' => value, 'name' => value,))
+     * @var price - current mix price according user's minutes
      * @var name - name of current field
      * @var field - included form fields
-     * @example array('50' => array('diff_min' => -15, 'name' => lical_min_15))
+     * @example array('50' => array('price' => 156, 'name' => lical_min_15))
      */
     private function GetMixPrice($op_abnm) {
         // parse mix values
