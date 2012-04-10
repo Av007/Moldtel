@@ -132,7 +132,7 @@ function moldtel_form($form, &$form_state) {
 function moldtel_form_validate($form, &$form_state){
   $values = $form_state['values'];
   // check values
-  if (!in_array($values['abonament'], array('st', 'ec'))){
+  if (!in_array($values['abonament'], array('st', 'ec', 'in'))){
     form_set_error('local_min', t('Wrong type selected!'));
   }
   unset($values['abonament']);
@@ -162,8 +162,9 @@ function moldtel_form_submit($form, &$form_state) {
     $moldtel = new MoldtelPackage($values, $tarifs);
     $result = $moldtel->GetResult();
     // display
+    // @note: temporary hardcode style
     foreach ($result as $value) {
-        drupal_set_message('Seria de opţiuni  ' . $value['name'] . ' -> ' . $value['price']);
+        drupal_set_message('Seria de opţiuni  ' . $value['name'] . ' -> <div style="float: right; padding-right: 450px;">' . number_format($value['price'], 2) . ' lei</div>');
     }
     return;
 }

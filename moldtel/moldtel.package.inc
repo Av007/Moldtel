@@ -97,7 +97,7 @@ class MoldtelPackage
                         else
                             $add_tarif = $this->tarifs[$key . ' add']['price'];
                         $k = $tarif['price'] / $tarif['minutes'];
-                        $plan_price[$tarif['tarif_name']] = array( 'price' => $this->getPrice($this->values['local_min'], $tarif['minutes'], $tarif['price'], $k, $add_tarif),
+                        $plan_price[$tarif['tarif_name']] = array( 'price' => $this->getPrice($value, $tarif['minutes'], $tarif['price'], $k, $add_tarif),
                             'field' => $key);
                     }
                 }
@@ -143,7 +143,7 @@ class MoldtelPackage
                     else
                         $add_tarif = $this->tarifs[$key . ' add']['minutes'];
                     $k = $ma['value']['price'] / $ma['value']['minutes'];
-                    $result[$ma['map'][1]][$key] = $this->getPrice($this->loc_min, $ma['value']['minutes'], $ma['value']['price'], $k, $add_tarif);
+                    $result[$ma['map'][1]][$key] = $this->getPrice($v, $ma['value']['minutes'], $ma['value']['price'], $k, $add_tarif);
                 }
             }
         }
@@ -182,20 +182,23 @@ class MoldtelPackage
     private function GetPackagesName($plans, $packages, $mixes) {
         // for plans
         $result['current'] = array('name' => $this->tarifs[$plans['current']['name']]['name'],
-            'price' => $this->tarifs[$plans['current']['name']]['price']);
+            'price' => $plans['current']['price']);
         $result['optimum'] = array('name' => $this->tarifs[$plans['optimum']['name']]['name'],
-                'price' => $this->tarifs[$plans['optimum']['name']]['price']);
+                'price' => $plans['optimum']['price']);
         // for package
         foreach ($packages as $key => $value) {
                 $result[] = array('name' => $this->tarifs[$value['name']]['name'],
-                    'price' => $this->tarifs[$value['name']]['price']);
+                    'price' => $value['price']);
         }
         // for mixes
         foreach ($mixes as $key => $value) {
                 foreach ($this->tarifs as $v) {
                     if ((strpos($v['tarif_name'], 'mix ' . $key) !== FALSE) && (!isset($result[$key]))) {
+                        $price = 0;
+                        foreach ($value as $val)
+                            $price += $val;
                         $result[$key] = array('name' => $this->tarifs[$v['tarif_name']]['name'],
-                            'price' => $this->tarifs[$v['tarif_name']]['price']);
+                            'price' => $price);
                     }
             }
         }
