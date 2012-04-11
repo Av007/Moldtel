@@ -1,0 +1,16 @@
+<?php
+// moldtel.install
+
+function moldtel_install() {
+    $sql_file = dirname(__FILE__) . "/moldtel.sql";
+    $fh = fopen($myFile, 'r');
+    $data = fread($fh, filesize($sql_file));
+    fclose($fh);
+    db_query($data);
+  }
+
+function moldtel_unistall()
+{
+    db_query('DROP TABLE IF EXISTS `moldtel_data`;');
+}
+?>
