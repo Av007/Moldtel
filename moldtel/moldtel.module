@@ -41,7 +41,7 @@ function moldtel_block_info() {
  *
  * Prepares the contents of the block(s).
  */
-function moldtel_block_view($result = '') {
+function moldtel_block_view() {
     $block['subject'] = t('Moldtelecom');
     if(user_access('access content')){
             $block['content'] =  drupal_get_form('moldtel_form');
@@ -69,10 +69,7 @@ function moldtel_form($form, &$form_state) {
         '#type' => 'select',
         '#title' => t('Plans types'),
         '#default_value' => t('Standart'),
-        '#options' => array(
-            'st' => t('Standard'),
-            'ec' => t('Econom'),
-        ),
+        '#options' => moldtel_select(),
         '#maxlength' => 130,
         '#required' => TRUE,
     );
@@ -132,20 +129,15 @@ function moldtel_form($form, &$form_state) {
 function moldtel_form_validate($form, &$form_state){
   $values = $form_state['values'];
   // check values
-  if (!in_array($values['abonament'], array('st', 'ec', 'in'))){
+  if (!in_array($values['abonament'], array('st', 'ec'))){
     form_set_error('local_min', t('Wrong type selected!'));
   }
-  unset($values['abonament']);
-  unset($values['form_build_id']);
-  unset($values['form_id']);
-  unset($values['submit']);
-  unset($values['op']);
+  $number_fields = array('local_min', 'national_min', 'mob_min', 'inter_min', 'rus_min', 'eu_usa_min');
   // is_numeric
   $check =0;
   foreach ($values as $key=>$value) {
-    if (!is_numeric($value) || $value <= 0){
-        if(!empty($value))
-            form_set_error($key, t('You must enter an integer number!'));
+    if ((!is_numeric($value) || $value < 0) && (!empty($value) && in_array($value, $number_fields))) {
+            form_set_error($key, t('You must enter an integer number and above zero!'));
         $check++;
     }
   }
@@ -162,10 +154,10 @@ function moldtel_form_submit($form, &$form_state) {
     $moldtel = new MoldtelPackage($values, $tarifs);
     $result = $moldtel->GetResult();
     // display
-    // @note: temporary hardcode style
     foreach ($result as $value) {
-        drupal_set_message('Seria de opţiuni  ' . $value['name'] . ' -> <div style="float: right; padding-right: 450px;">' . number_format($value['price'], 2) . ' lei</div>');
+        drupal_set_message('Seria de opţiuni  ' . $value['name'] . ' -> ' . $value['price'] . ' lei');
     }
+    $form_state['storage'] = $result;
     return;
 }
 
@@ -189,4 +181,31 @@ function moldtel_data() {
         $result[$record['tarif_name']] = $record;
     }
     return $result;
+}
+
+/**
+ * Custom content function.
+ *
+ * Sets beginning and end dates, retrieves posts from database
+ * saved in that time period.
+ *
+ * @param $display
+ *   Whether called by block or page, which need different numbers of posts.
+ * @return
+ *   A result set of the targeted posts.
+ */
+function moldtel_select() {
+    //Use Database API to retrieve current posts.
+    $result = array();
+    $query = db_select('moldtel_data')
+            ->fields('moldtel_data', array('tarif_name', 'name'))
+            ->condition('type', 'plan','=')
+            ->execute();
+    while ($record = $query->fetchAssoc()) {
+        $result[$record['tarif_name']] = $record;
+    }
+    foreach ($result as $value) {
+        $select[$value['tarif_name']] = t($value['name']);
+    }
+    return $select;
 }
