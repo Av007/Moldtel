@@ -41,12 +41,12 @@ function moldtel_block_info() {
  *
  * Prepares the contents of the block(s).
  */
-function moldtel_block_view() {
-    $block['subject'] = t('Moldtelecom');
-    if(user_access('access content')){
-            $block['content'] =  drupal_get_form('moldtel_form');
-    }
-  return $block;
+function moldtel_menu() {
+    $items['test'] = array(
+        'title' => 'Moldtelecom',
+        'page callback' => 'drupal_get_form',
+    );
+    return $items;
 }
 
 /**

@@ -1,7 +1,56 @@
 <?php
 // moldtel.install
+function moldtel_schema()
+{
+    $schema['moldtel_data'] = array(
+        'description' => 'The table with tarifs.',
+        'fields' => array(
+            'id' => array(
+                'description' => 'The primary identifier.',
+                'type' => 'serial',
+                'unsigned' => TRUE,
+                'not null' => TRUE,
+            ),
+            'tarif_name' => array(
+                'description' => 'Name identifier for operations.',
+                'type' => 'varchar',
+                'length' => 128,
+                'not null' => TRUE,
+            ),
+            'minutes' => array(
+                'description' => 'Package or plan minutes.',
+                'type' => 'int',
+                'unsigned' => TRUE,
+                'not null' => TRUE,
+            ),
+            'price' => array(
+                'description' => 'Price for package or plan.',
+                'type' => 'numeric',
+                'unsigned' => TRUE,
+                'not null' => TRUE,
+            ),
+            'type' => array(
+                'description' => 'Enum value.',
+                'type' => 'varchar',
+                'length' => 128,
+                'not null' => TRUE,
+                'default' => 'plan',
+            ),
+            'name' => array(
+                'description' => 'Language name.',
+                'type' => 'varchar',
+                'length' => 128,
+                'not null' => TRUE,
+            ),
+        ),
+        'unique keys' => array('id'),
+        'primary key' => array('id'),
+    );
+}
 
-function moldtel_install() {
+function moldtel_install() 
+{
+    drupal_install_schema('moldtel_schema');
     $sql_file = dirname(__FILE__) . "/moldtel.sql";
     $fh = fopen($sql_file, 'r');
     $data = fread($fh, filesize($sql_file));
@@ -11,6 +60,6 @@ function moldtel_install() {
 
 function moldtel_unistall()
 {
-    db_query('DROP TABLE IF EXISTS `moldtel_data`;');
+    drupal_uninstall_schema('moldtel_schema');
 }
 ?>
